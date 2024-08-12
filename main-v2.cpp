@@ -202,3 +202,228 @@ class Traffic_Generator{
 		}
 
 };
+class Cores
+{
+public:
+	// static vector<int> E(3);
+	queue<int> curr_queue;
+	vector<int> Core_E;
+	int freq;
+	bool change_freq; // 0 no chng 1 low , 2 med, 3 high
+	bool measure_power;
+	int type;	//0 low , 1 med , 2 high
+	double curr_time;
+	double prev_time;
+
+	const vector<pair<int,int>> type_range{{0,(1*Hz+1)},{1*Hz,(2*Hz+1)},{2*Hz,(3*Hz+1)}};
+	Cores(){
+		freq=3*Hz;
+		change_freq=false;
+		measure_power=false;
+		type=2;
+		for(int i=0;i<3;i++)
+			Core_E.push_back(0);
+	}
+	void change_rate_of_freq(int x)
+	{
+		freq=x*Hz;
+		for(int i=0;i<type_range.size();i++)
+		{
+			if(freq>=type_range[i].first&&freq<type_range[i].second)
+			{
+				type=i;
+				break;
+			}
+		}
+		//cout<<type<<"??";
+		change_freq=false;
+	}
+	int get_packet()
+	{
+		int id=curr_queue.front();
+		curr_queue.pop();
+		return id;
+	}
+	void get_power()
+	{
+		int sum=0;
+		for(int i=0;i<3;i++)
+		{
+			E[i]+=Core_E[i];
+			Core_E[i]=0;
+		}
+		display_energy();
+	}
+	void send_data_to_queue_3(int x)
+	{
+		Queue_3.push(x);
+	}		int cnt=0,x=0;
+	void process()
+	{
+
+		while(!curr_queue.empty())
+		{
+			//cout<<change_freq<<" -->";
+			if(change_freq)
+			{
+
+				x++;
+				//cout<<":::"<<x<<" ";
+				if(x%3==1)
+					change_rate_of_freq(1);
+				else if(x%3==2)
+					change_rate_of_freq(2);
+				else 
+					change_rate_of_freq(3);
+				//change_freq=false;
+			}
+			int id=get_packet();
+			pkts[id].set_end_time();
+			send_data_to_queue_3(id);
+			//cout<<id<<":";
+			Core_E[type]+=1;
+
+			for(int i=0;i<3;i++)
+				cout<<Core_E[i]<<" ";
+
+			cnt++;
+			//cout<<"cnt:"<<cnt<<"\n";
+			if(cnt%3==0)
+				measure_power=true;	
+			if(cnt%10==0)
+				change_freq=true;		
+			if(measure_power)
+			{
+				get_power();
+				measure_power=false;
+			}
+
+
+			// else 
+			// 	change_freq=3;
+
+			//usleep(rest);
+//**set constant rate for sleep
+		}
+	}
+	void display_energy(){
+		cout_mtx.lock();
+		for(int i=0;i<3;i++)
+			cout<<E[i]<<"..";
+		cout<<"\n";
+		cout_mtx.unlock();
+	}
+	
+};
+vector<thread> t;
+vector<Cores> core;
+class VUPE_Block{
+public:
+
+	bool measure_power;
+	bool change_config;
+	VUPE_Block(){
+		measure_power=false;
+		change_config=false;
+	}
+	int get_packet()
+	{
+		int id=Queue_1.front();
+		Queue_1.pop();
+		return id;
+	}
+
+	bool find(int x,int id){
+		for(int i=0;i<core.size();i++){
+			if(core[i].type==x){
+				core[i].curr_queue.push(id);
+				return true;
+			}
+		}
+		return false;
+	}
+	void assign_core(int id){
+		double req=pkts[id].time_req;
+		bool cond=false;
+		if(req<100){	//high
+			cond=find(2,id);
+			if(!cond){
+				cond=find(1,id);
+				if(!cond)
+					cond=find(0,id);
+			}
+		} 
+		else if(req<250){	//med
+			cond=find(1,id);
+			if(!cond){
+				cond=find(2,id);
+				if(!cond)
+					cond=find(0,id);
+			}
+		}	
+		else{
+			cond=find(0,id);
+			if(!cond){
+				cond=find(1,id);
+				if(!cond)
+					cond=find(2,id);
+			}
+		}
+
+	}
+	// void send_info_to_db(int id){
+
+	// }
+	void process_packet(int id){
+		if(change_config){
+			//change_core_config()
+			change_config=false;
+		}
+		assign_core(id);
+		//send_info_to_db(id);
+	}
+	void energy_module()
+	{
+		int sum=0;
+		for(int i=0;i<core.size();i++)
+			core[i].get_power();
+		for(int i=0;i<3;i++)
+			sum+=(i+1)*E[i];
+		energy.push_back(sum);
+	}
+	void send_data_to_queue_2(int id)
+	{
+		Queue_2.push(id);
+	}
+	void run()
+	{
+		double per=(1.0/rate)*1e6-100,rest;
+		auto start = high_resolution_clock::now();
+		//create_cores();
+		while(!Queue_1.empty())
+		{
+			auto start = high_resolution_clock::now();
+			m.lock();
+			int id=get_packet();
+			pkts[id].set_end_time();
+			process_packet(id);
+			send_data_to_queue_2(id);
+			if(measure_power){
+				energy_module();
+				measure_power=false;
+			}
+			m.unlock();
+
+			auto stop = high_resolution_clock::now();
+		 	auto duration = duration_cast<nanoseconds>(stop - start);
+			rest=per-(duration.count()/1e3);
+	 		if(rest>=0)
+	 			usleep(rest);	
+		}
+		auto stop = high_resolution_clock::now();
+	 	auto duration = duration_cast<nanoseconds>(stop - start);
+	 	cout_mtx.lock();
+	 	cout<<double(duration.count()/1e9)<<"\n";
+	 	cout_mtx.unlock();
+	}
+};
