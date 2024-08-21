@@ -427,3 +427,97 @@ public:
 	 	cout_mtx.unlock();
 	}
 };
+class Core_And_Traffic_Statistics{
+public:
+	vector<int> throughput;
+	vector<double> pkt_loss;
+
+	void plot_graph(int idx){
+    	ofstream data("data/plot.txt", ios::app); // open filename.txt in append mode
+    	data<<idx<< endl; // append "some stuff" to the end of the file
+    	data.close();			
+	}
+	void plot(){
+		int ans,x;
+		bool condition=true;
+		cout<<"\n1. Energy vs Time";
+		cout<<"\n2. Throughput vs Time";
+		cout<<"\n3. Energy vs Throughput";
+		cout<<"\n4. Throughput vs Packet Loss";
+		while(condition){
+			cout<<"\nEnter the plot no.";
+			cin>>x;
+			if(x>0&&x<=4){
+				plot_graph(x);
+			}
+			else
+				cout<<"\nInvalid choice";
+			cout<<"\nDo you want to continue plot Y/N";
+			cin>>ans;
+			if(ans=='N')
+				condition=false;
+		}
+
+	}
+
+};
+class VUPB_Block{
+public:
+	int freq;
+	bool predict_data;
+	VUPB_Block(){
+		freq=3*Hz;
+		predict_data=false;
+	}
+	void learn_module(){
+
+	}
+	// void set_data_to_dataset(int id){
+ //    	ofstream data("data/dataset.txt", ios::app); // open filename.txt in append mode
+ //    	data<<id<< endl; // append "some stuff" to the end of the file
+ //    	data.close();
+
+	// }
+	void set_data_to_dataset(int id)
+	{
+    	// file pointer
+    	cout_mtx.lock();
+    	fstream datafile;
+    	// opens an existing csv file or creates a new file.
+    	datafile.open("dataset.csv", ios::out | ios::app);
+  		//ID Pkt_size QCI_value priority_level start_time(Day MM DD HH:MM:SS YYYY) time_req(ms)
+ 		datafile<<pkts[id].id<<", "<<pkts[id].pkt_size<<", "<<pkts[id].QCI_idx<<", "<<pkts[id].priority_level<<", "<<pkts[id].start_time.hh<<":"<<pkts[id].start_time.mm<<":"<<pkts[id].start_time.ss<<":"<<pkts[id].start_time.ms<<", "<<pkts[id].end_time.hh<<":"<<pkts[id].end_time.mm<<":"<<pkts[id].end_time.ss<<":"<<pkts[id].end_time.ms<<", "<<pkts[id].time_req<<"\n";
+    	datafile.close();
+    	cout_mtx.unlock();
+	}
+	void send_data_to_db(int x){
+
+	}
+	void change_config(int freq){
+
+	}
+	void send_freq_to_db(int x){
+
+	}
+	int  predict_freq(){
+		return 0;
+	}
+	void run(){
+		while(!Queue_2.empty()){
+			learn_module();
+			int id=Queue_2.front();
+			cout<<id;
+			Queue_2.pop();
+			set_data_to_dataset(id);
+			if(predict_data){
+				freq=predict_freq();
+				change_config(freq);
+			}
+			else{
+				send_freq_to_db(freq);
+
+			}
+
+		}
+	}
+};
