@@ -521,3 +521,116 @@ public:
 		}
 	}
 };
+void thread_1(int id){
+	static Traffic_Generator traffic_controller;
+	traffic_controller.pkt_rate=100;
+
+	traffic_controller.random_pkt();
+	//sleep(5);
+}
+
+void make(int id){
+	Cores c;
+	core.push_back(c);
+	auto start = high_resolution_clock::now();
+	while(1){
+
+		while(!core[id].curr_queue.empty()){
+
+				core[id].process();
+		}
+				auto stop = high_resolution_clock::now();
+	 	auto duration = duration_cast<nanoseconds>(stop - start);
+	 	if(duration.count()/1e9>=run_program+5)
+	 		break;
+	}
+}
+void thread_2(int id){
+	auto start = high_resolution_clock::now();
+	static VUPE_Block engine;
+	while(1)
+	{
+		if(!Queue_1.empty())
+			engine.run();
+
+		auto stop = high_resolution_clock::now();
+		auto duration = duration_cast<nanoseconds>(stop - start);
+	 	if(duration.count()/1e9>=run_program+5){
+	 		engine.energy_module();
+	 		break;
+	 	}
+	}
+}
+void thread_3(int id){
+	static VUPB_Block VUPB;
+	auto start=high_resolution_clock::now();
+	while(1){
+		VUPB.run();
+		auto stop = high_resolution_clock::now();
+		auto duration = duration_cast<nanoseconds>(stop - start);
+	 	if(duration.count()/1e9>=run_program+5){
+	 		break;
+	 	}
+	}
+
+}
+void thread_4(int id){
+	static Core_And_Traffic_Statistics Stats;
+	auto start = high_resolution_clock::now();
+
+
+	while(1)
+	{
+		this_thread::sleep_for(chrono::milliseconds(5000) );// 5 seconds;
+		auto stop = high_resolution_clock::now();
+		auto duration = duration_cast<nanoseconds>(stop - start);
+	 	if(duration.count()/1e9>=run_program+5){
+	 		break;
+	 	}
+	}
+}
+//**working properly
+
+//To run a thread evey k minutes
+
+// #include <chrono> 
+// #include <thread> 
+// // .... 
+// while (some_condition) { 
+//   // Do whatever you're doing 
+//   std::this_thread::sleep_for(std::chrono::minutes(5)); 
+// }
+int main()
+{
+	thread t4(thread_4,4);
+
+	sleep(1);
+	for(int i=0;i<max_cores;i++){
+		t.push_back(thread(make,i));
+	}
+	sleep(1);	
+	thread t2(thread_2,2);
+	sleep(1);
+	thread t3(thread_3,3);
+	sleep(1);
+	thread t1(thread_1,1);	
+
+	t1.join();
+
+	for(int i=0;i<max_cores;i++){
+		t[i].join();
+	}	
+	t2.join();
+	t4.join();
+	t3.join();
+	// for(int i=0;i<10;i++)
+	// 	pkts[i].print();
+	// Traffic_Generator traffic_controller;
+	// traffic_controller.pkt_rate=rate;
+	// traffic_controller.random_pkt();
+	// cout<<"\n";
+	// cout<<"\n";
+	// pkts[2].end_time=set_time();
+	// pkts[2].print();
+}
+
